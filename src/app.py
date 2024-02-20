@@ -1,15 +1,70 @@
 import os
-from sqlalchemy import create_engine
-import pandas as pd
 from dotenv import load_dotenv
+import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
+import matplotlib.pyplot as plt
+import pandas as pd
+from scipy.stats import linregress
 
-# load the .env file variables
+
+
+# Cargar variables desde el archivo .env
 load_dotenv()
 
-# 1) Connect to the database here using the SQLAlchemy's create_engine function
+# Acceder a las variables de entorno
+client_id = os.getenv("CLIENT_ID")
+client_secret = os.getenv("CLIENT_SECRET")
 
-# 2) Execute the SQL sentences to create your tables using the SQLAlchemy's execute function
+auth_manager = SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
 
-# 3) Execute the SQL sentences to insert your data using the SQLAlchemy's execute function
+sp = spotipy.Spotify(auth_manager=auth_manager)
 
-# 4) Use pandas to print one of the tables as dataframes using read_sql function
+artist_id = '5nZlhgO7iNedGlO0gKu9us'
+
+top_tracks = sp.artist_top_tracks(artist_id)
+
+data = []
+for track in top_tracks['tracks'][0:10]:
+    track_name = track['name']
+    popularity = track['popularity']
+    duration_ms = track['duration_ms']
+    duration_min = round(duration_ms / (60 * 1000),2)
+
+    data.append({
+        'Nombre de la canción': track_name,
+        'Popularidad': popularity,
+        'Duración (minutos)': duration_min
+    })
+
+# Crea un DataFrame de pandas
+df = pd.DataFrame(data)
+
+# Se ordena el dataframe por popularidad
+df = df.sort_values(by='Popularidad', ascending=False)
+
+#se muestra top 3 por popularidad
+
+print('El top 3 más popular es:')
+print(df.head(3))
+
+#Verificacion de relacion entre duracion y popularidad
+
+plt.figure(figsize = (10, 5))
+plt.scatter(df['Duración (minutos)'], df['Popularidad'], alpha=0.5)
+plt.title('Popularidad vs Duración')
+plt.xlabel('Duración (min)')
+plt.ylabel('Popularidad')
+plt.grid(True)
+plt.show()
+
+
+slope, intercept, r_value, p_value, std_err = linregress(df['Duración (minutos)'], df['Popularidad'])
+r_squared = round(r_value**2,5)
+
+if r_squared < 0.5:
+
+    print(f'No existe relación lineal entre la duración de la canción y su popularidad')
+
+else:
+
+    print(f'Existe relación lineal entre la duración de la cancion y su popularidad')
